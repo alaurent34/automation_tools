@@ -1,43 +1,168 @@
 # -*- coding: utf-8 -*-
 """
-Created on Thu Oct 13 10:31:02 2022
+File: create_project.py
+Author: Antoine Laurent, Laurent Gauthier
+Email: alaurent@agencemobilitedurable.ca, lgauthier@agencemobilitedurable.ca
+Github: https://github.com/alaurent34
+Description:
 
-@author: lgauthier
+Helper tool to create and push a capacity project onto the web app.
+
+Usage :
+    create_project <ProjectName> <SecteurZonePath>
 """
 
-import geopandas as gpd
-import datetime
+# Python program to demonstrate
+# command line arguments
 import os
+import argparse
+import datetime
+import requests
+import logging as log
+import pandas as pd
+os.environ['USE_PYGEOS'] = '0'
+import geopandas as gpd
 
-GEOBASE_IDX_COL = 'COT_RUE_ID'
+# ASSET CONFIG
+GEOBASE_PATH = os.path.join(os.path.dirname(__file__),
+                            'assets/geodouble_2950.geojson')
+GEOBASE_IDX_COL = 'COTE_RUE_ID'
+
+# APP CONFIG
+APP_URL = ""
+
+# DEFAULT ZONE NAME
 SECTOR_NAME = 'NomSecteur'
 
-PROJECT_PATH = r"C:/Users/alaurent/OneDrive - Agence de mobilité durable/Shared Documents/23513_SDÉ_Accessibilité artères commerciales/03_Travail/31_Analyses/Préparation"
-NOM_FICHIER_ZONE_ETUDE = r"23513_zones d'études.geojson"
+# UTILS
+DATE = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 
-GEODOUBLE = gpd.read_file(r"C:/Users/alaurent/OneDrive - Agence de mobilité durable/Shared Documents/General/Données communes/Geobases/2023-05/geobase double")
-ZONEETUDE = gpd.read_file(os.path.join(PROJECT_PATH, NOM_FICHIER_ZONE_ETUDE))
 
-date = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+def parse_args():
+    """
+    doc
+    """
+    # Initialize parser
+    parser = argparse.ArgumentParser(
+            description="This script provide an automation to upload project" +
+                        " to the capacity app."
+            )
+
+    # Adding optional argument
+    parser.add_argument("project_name", metavar='Project name', type=str,
+                        help="Name of the project.")
+    parser.add_argument("zone", metavar='Zone', type=str,
+                        help="Path of the GeoJSON boundary " +
+                        "of the studied zone.")
+    parser.add_argument('-v', '--verbose', action='count', default=0,
+                        dest='verbose_count')
+    parser.add_argument("--desc", default="", dest='project_desc',
+                        help="Description for the project")
+    parser.add_argument("--zone-id", default=SECTOR_NAME, dest='zone_id',
+                        help="Id used in the GeoJSON file to address" +
+                             "the zone, default: "+GEOBASE_IDX_COL)
+    parser.add_argument("--gdbl-path", default=GEOBASE_PATH,
+                        dest='geobase_path',
+                        help="Path to custom geobase.")
+    parser.add_argument("--gbdl-id", default=GEOBASE_IDX_COL,
+                        dest='geobase_id',
+                        help="Custom ID for geobase.")
+
+    # Read arguments from command line
+    args = parser.parse_args()
+
+    return args
+
+
+def set_verbose_level(level:int):
+    if level > 0:
+        log.basicConfig(format="%(levelname)s: %(message)s", level=log.INFO)
+        log.info("Verbose output.")
+    else:
+        log.basicConfig(format="%(levelname)s: %(message)s")
+
 
 def clean_columns_names(df, suffix):
-    names = {x:x.lower()+f'_{suffix.lower()}' if x.lower() == 'id' else x.lower() for x in df.columns}
+    names = {
+        x: x.lower()+f'_{suffix.lower()}' if x.lower() == 'id' else x.lower()
+        for x in df.columns
+    }
     return df.rename(columns=names)
 
-def clean_doublons(frame, field=GEOBASE_IDX_COL.lower()):
-    return frame.groupby(field).nth(0).reset_index()
 
-def genOutputs(path, names, frame):
-    frame.to_file(os.path.join(path, names+".geojson"), index=False, driver='GeoJSON')
-
-    for sector, data in frame.groupby(SECTOR_NAME.lower()):
-        with open(os.path.join(PROJECT_PATH, path, names + sector + "_asList.txt"), 'w') as f:
-            f.write(",\n".join([str(i) for i in data[GEOBASE_IDX_COL.lower()].tolist()]))
+def clean_doublons(frame, index_by=GEOBASE_IDX_COL.lower()):
+    """
+    doc
+    """
+    return frame.groupby(index_by).nth(0).reset_index()
 
 
-roadsCut = gpd.sjoin(clean_columns_names(GEODOUBLE, 'geodbl'),
-                     clean_columns_names(ZONEETUDE, 'zoneetude'),
-                     predicate='within')
-roadsCut = clean_doublons(roadsCut)
+def upload(app_url: str, project_name: str, road_list: str,
+           description: str = None):
+    """
+    doc
+    """
+    payload = {
+            'name': project_name,
+            'description': description,
+            'geobaseIds': road_list,
+    }
 
-genOutputs(PROJECT_PATH, f"geoDoubleExtract_{date}", roadsCut)
+    response = requests.post(app_url, json=payload)
+
+    if response.status_code == 200:
+        print('Uplaoad successfull')
+    else:
+        print('There has been an error. Status : ', response.status_code)
+        log.info(response.text)
+
+
+def gen_outputs(path: str, names: str, frame: pd.DataFrame,
+                sector_id: str = SECTOR_NAME, road_id: str = GEOBASE_IDX_COL):
+    """
+    doc
+    """
+
+    frame.to_file(os.path.join(path, names+".geojson"),
+                  index=False, driver='GeoJSON')
+
+    for sector, data in frame.groupby(sector_id.lower()):
+        with open(os.path.join(path, path,
+                               names + sector + "_asList.txt"),
+                  'w') as f:
+            f.write(
+                ",\n".join([str(i) for i in data[road_id.lower()].tolist()])
+            )
+
+
+def main():
+
+    config = parse_args()
+
+    # set log
+    set_verbose_level(config.verbose_count)
+
+    # read files
+    zone = gpd.read_file(config.zone)
+    geobase = gpd.read_file(config.geobase_path)
+
+    # clip roads into zone
+    roads_cut = gpd.sjoin(clean_columns_names(geobase, 'geodbl'),
+                          clean_columns_names(zone, 'zoneetude'),
+                          predicate='within')
+
+    roads_cut = clean_doublons(roads_cut,
+                               index_by=config.geobase_id.lower())
+
+    road_list = [int(i) for i in roads_cut[config.geobase_id.lower()].tolist()]
+
+    response = upload(
+        app_url=APP_URL,
+        project_name=config.project_name,
+        road_list=road_list,
+        description=config.project_desc
+    )
+
+
+if __name__ == "__main__":
+    main()

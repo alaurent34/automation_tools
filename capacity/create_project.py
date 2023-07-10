@@ -84,6 +84,37 @@ def set_verbose_level(level:int):
         log.basicConfig(format="%(levelname)s: %(message)s")
 
 
+def assure_same_crs(gdf1, gdf2):
+    """ Enforce crs of gdf2 to the same CRS as gdf1.
+
+    Parameters
+    ----------
+    gdf1: geopandas.GeoDataFrame
+        First geometric collection
+    gdf2: geopandas.GeoDataFrame
+        Second geometry collection
+
+    Returns
+    -------
+    geopandas.GeoDataFrame
+        gdf2 with gdf1 crs
+
+    """
+    assert isinstance(gdf1, gpd.GeoDataFrame),\
+           'First argument is not a GeoDataFrame'
+
+    assert isinstance(gdf2, gpd.GeoDataFrame),\
+           'Second argument is not a GeoDataFrame'
+
+    assert gdf1.crs, "CRS of first geometry should not be None"
+    assert gdf2.crs, "CRS of second geometry should not be None"
+
+    if gdf1.crs != gdf2.crs:
+        gdf2 = gdf2.to_crs(gdf1.crs)
+
+    return gdf2
+
+
 def clean_columns_names(df, suffix):
     names = {
         x: x.lower()+f'_{suffix.lower()}' if x.lower() == 'id' else x.lower()

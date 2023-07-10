@@ -40,7 +40,7 @@ DATE = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 
 def parse_args():
     """
-    doc
+    Argument parser for the script
     """
     # Initialize parser
     parser = argparse.ArgumentParser(
@@ -67,6 +67,8 @@ def parse_args():
     parser.add_argument("--gbdl-id", default=GEOBASE_IDX_COL,
                         dest='geobase_id',
                         help="Custom ID for geobase.")
+    parser.add_argument("--merge-sect", default=False, dest='merge_sect',
+                        help="Put all sectors in the same project.")
 
     # Read arguments from command line
     args = parser.parse_args()

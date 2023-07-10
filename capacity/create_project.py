@@ -15,10 +15,11 @@ Usage :
 # Python program to demonstrate
 # command line arguments
 import os
-import sys
 import argparse
 import datetime
 import requests
+import sys
+from typing import List
 import logging as log
 import pandas as pd
 os.environ['USE_PYGEOS'] = '0'
@@ -39,9 +40,14 @@ SECTOR_NAME = 'NomSecteur'
 DATE = datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 
 
-def parse_args():
+def parse_args() -> argparse.Namespace:
     """
     Argument parser for the script
+
+    Return
+    ------
+    argparse.Namespace
+        Parsed command line arguments
     """
     # Initialize parser
     parser = argparse.ArgumentParser(
@@ -77,7 +83,7 @@ def parse_args():
     return args
 
 
-def set_verbose_level(level: int):
+def set_verbose_level(level: int) -> None:
     """
     Set verbose level
 
@@ -93,7 +99,8 @@ def set_verbose_level(level: int):
         log.basicConfig(format="%(levelname)s: %(message)s")
 
 
-def assure_same_crs(gdf1, gdf2):
+def assure_same_crs(gdf1: gpd.GeoDataFrame,
+                    gdf2: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
     """ Enforce crs of gdf2 to the same CRS as gdf1.
 
     Parameters
@@ -124,7 +131,7 @@ def assure_same_crs(gdf1, gdf2):
     return gdf2
 
 
-def clean_columns_names(df, suffix):
+def clean_columns_names(df: pd.DataFrame, suffix: str) -> pd.DataFrame:
     """
     Add suffix to all columns names.
 
@@ -147,17 +154,41 @@ def clean_columns_names(df, suffix):
     return df.rename(columns=names)
 
 
-def clean_doublons(frame, index_by=GEOBASE_IDX_COL.lower()):
+def clean_doublons(frame: pd.DataFrame,
+                   index_by: str = GEOBASE_IDX_COL.lower()) -> pd.DataFrame:
     """
-    doc
+    Clean doublons in column <index_by>.
+
+    Parameters
+    ----------
+    frame: pandas.DataFrame
+        Data input.
+    index_by: str, default "cote_rue_id"
+        Column's name to filter.
+
+    Return
+    ------
+    pandas.DataFrame
+        Data wihtout duplicate values in column <index_by>
     """
     return frame.groupby(index_by).nth(0).reset_index()
 
 
-def upload(app_url: str, project_name: str, road_list: str,
-           description: str = None):
+def upload(app_url: str, project_name: str, road_list: List[int],
+           description: str = None) -> None:
     """
-    doc
+    Upload a capacity project onto the server.
+
+    Parameters
+    ---------
+    app_url: str
+        Endpoint of the server
+    project_name: str
+        Name of the project
+    road_list: List[int]
+        List of road ids
+    description: str, default None
+        Description of the project
     """
     payload = {
             'name': project_name,
@@ -177,7 +208,20 @@ def upload(app_url: str, project_name: str, road_list: str,
 def gen_outputs(path: str, names: str, frame: pd.DataFrame,
                 sector_id: str = SECTOR_NAME, road_id: str = GEOBASE_IDX_COL):
     """
-    doc
+    Write all ids of roads for the capacity project.
+
+    Parameters
+    ----------
+    path: str
+        Where to save the file
+    names: str
+        Name of the project
+    frame: pandas.DataFrame
+        Road data of the project
+    sector_id: str, default NomSecteur
+        Sector column's name
+    road_id: str, default COTE_RUE_ID
+        Road ID column's name
     """
 
     frame.to_file(os.path.join(path, names+".geojson"),
@@ -193,6 +237,14 @@ def gen_outputs(path: str, names: str, frame: pd.DataFrame,
 
 
 def main():
+    """
+    Script execution, as follow:
+
+    1. Parse arguments
+    2. Read project limit zone and road network
+    3. Clip road network to limit
+    4. Upload roads id to server
+    """
 
     config = parse_args()
 
@@ -237,6 +289,7 @@ def main():
         )
 
     sys.exit(0)
+
 
 if __name__ == "__main__":
     main()

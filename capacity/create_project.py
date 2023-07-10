@@ -77,7 +77,15 @@ def parse_args():
     return args
 
 
-def set_verbose_level(level:int):
+def set_verbose_level(level: int):
+    """
+    Set verbose level
+
+    Parameters
+    ----------
+    level: int
+        level of verbose
+    """
     if level > 0:
         log.basicConfig(format="%(levelname)s: %(message)s", level=log.INFO)
         log.info("Verbose output.")
@@ -117,6 +125,21 @@ def assure_same_crs(gdf1, gdf2):
 
 
 def clean_columns_names(df, suffix):
+    """
+    Add suffix to all columns names.
+
+    Parameters
+    ----------
+    df: pd.DataFrame
+        Data.
+    suffix: str
+        Suffix to append to all column names.
+
+    Returns
+    -------
+    pd.DataFrame
+        Data with renamed columns
+    """
     names = {
         x: x.lower()+f'_{suffix.lower()}' if x.lower() == 'id' else x.lower()
         for x in df.columns
@@ -145,7 +168,7 @@ def upload(app_url: str, project_name: str, road_list: str,
     response = requests.post(app_url, json=payload)
 
     if response.status_code == 200:
-        print('Uplaoad successfull')
+        log.info(project_name, 'Upload successfull')
     else:
         print('There has been an error. Status : ', response.status_code)
         log.info(response.text)

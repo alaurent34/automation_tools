@@ -68,7 +68,7 @@ def parse_args():
     parser.add_argument("--gbdl-id", default=GEOBASE_IDX_COL,
                         dest='geobase_id',
                         help="Custom ID for geobase.")
-    parser.add_argument("--merge-sect", default=False, dest='merge_sect',
+    parser.add_argument("--merge-sect", action="store_true", dest='merge_sect',
                         help="Put all sectors in the same project.")
 
     # Read arguments from command line
@@ -168,7 +168,7 @@ def upload(app_url: str, project_name: str, road_list: str,
     response = requests.post(app_url, json=payload)
 
     if response.status_code == 200:
-        log.info(project_name, 'Upload successfull')
+        log.info(project_name + ': Upload successfull')
     else:
         print('There has been an error. Status : ', response.status_code)
         log.info(response.text)

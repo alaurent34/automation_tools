@@ -15,6 +15,7 @@ Usage :
 # Python program to demonstrate
 # command line arguments
 import os
+import sys
 import argparse
 import datetime
 import requests
@@ -179,6 +180,8 @@ def main():
     zone = gpd.read_file(config.zone)
     geobase = gpd.read_file(config.geobase_path)
 
+    zone = assure_same_crs(geobase, zone)
+
     # clip roads into zone
     roads_cut = gpd.sjoin(clean_columns_names(geobase, 'geodbl'),
                           clean_columns_names(zone, 'zoneetude'),
@@ -187,15 +190,30 @@ def main():
     roads_cut = clean_doublons(roads_cut,
                                index_by=config.geobase_id.lower())
 
-    road_list = [int(i) for i in roads_cut[config.geobase_id.lower()].tolist()]
+    # Each sub-secteur have one capacity project unless specified
+    # otherwise by user imput.
+    if config.merge_sect:
+        road_list = [int(i) for i in roads_cut[config.geobase_id.lower()].tolist()]
 
-    response = upload(
-        app_url=APP_URL,
-        project_name=config.project_name,
-        road_list=road_list,
-        description=config.project_desc
-    )
+        upload(
+            app_url=APP_URL,
+            project_name=config.project_name,
+            road_list=road_list,
+            description=config.project_desc
+        )
+        sys.exit(0)
 
+    for sector, sector_roads in roads_cut.groupby(config.zone_id.lower()):
+        road_list = [int(i) for i in sector_roads[config.geobase_id.lower()].tolist()]
+
+        upload(
+            app_url=APP_URL,
+            project_name=config.project_name + " - " + str(sector),
+            road_list=road_list,
+            description=config.project_desc
+        )
+
+    sys.exit(0)
 
 if __name__ == "__main__":
     main()

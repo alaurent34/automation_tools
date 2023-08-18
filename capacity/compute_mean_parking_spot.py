@@ -45,11 +45,18 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("projects_list", metavar='Project list', type=str,
                         nargs='*', default=[],
                         help="List of project names to querry.")
+    parser.add_argument("--merge", action="store_true", dest='merge',
+                        help="Merge all capacities together.")
+    parser.add_argument("-o", "--output", default=None, dest='output_name',
+                        help='Specify output name')
     # Read arguments from command line
     args = parser.parse_args()
 
     if not sys.stdin.isatty():
         args.projects_list.extend(sys.stdin.read().splitlines())
+
+    if not args.output_name:
+        args.output_name = slugify("-".join(projects))
 
     return args
 
@@ -74,6 +81,22 @@ def merge_capacities(capacities_list: List) -> dict:
 
     """
     return list(itertools.chain(*capacities_list))
+
+
+def save_restriction(project_name: str, capacity_array: dict):
+    """TODO: Docstring for save_capacity.
+
+    Parameters
+    ----------
+    project_name: str
+        Name of the project
+
+    """
+
+    os.makedirs("./output/", exist_ok=True)
+
+    with open("output/" + slugify(unidecode(project_name)) + "_capacity_array.json", 'w+') as f:
+        json.dump(capacity_array, f)
 
 
 def save_capacity(restrict_h):
@@ -104,6 +127,10 @@ def main():
     )
 
     merge_capa = merge_capacities(capacities)
+
+    if config.merge:
+        save_restriction(config.output_name, merge_capa)
+        sys.exit(0)
 
     geobase = gpd.read_file(GEOBASE_PATH)
 

@@ -76,6 +76,8 @@ def parse_args() -> argparse.Namespace:
                         help="Custom ID for geobase.")
     parser.add_argument("--merge-sect", action="store_true", dest='merge_sect',
                         help="Put all sectors in the same project.")
+    parser.add_argument("--print-only", action="store_true", dest='print_only',
+                        help="Do not push to app, only print IDs.")
 
     # Read arguments from command line
     args = parser.parse_args()
@@ -270,23 +272,30 @@ def main():
     if config.merge_sect:
         road_list = [int(i) for i in roads_cut[config.geobase_id.lower()].tolist()]
 
-        upload(
-            app_url=APP_URL,
-            project_name=config.project_name,
-            road_list=road_list,
-            description=config.project_desc
-        )
+        if config.print_only:
+            print(road_list)
+        else:
+            upload(
+                app_url=APP_URL,
+                project_name=config.project_name,
+                road_list=road_list,
+                description=config.project_desc
+            )
         sys.exit(0)
 
     for sector, sector_roads in roads_cut.groupby(config.zone_id.lower()):
         road_list = [int(i) for i in sector_roads[config.geobase_id.lower()].tolist()]
 
-        upload(
-            app_url=APP_URL,
-            project_name=config.project_name + " - " + str(sector),
-            road_list=road_list,
-            description=config.project_desc
-        )
+        if config.print_only:
+            print('---------' + sector + '---------')
+            print(road_list)
+        else:
+            upload(
+                app_url=APP_URL,
+                project_name=config.project_name + " - " + str(sector),
+                road_list=road_list,
+                description=config.project_desc
+            )
 
     sys.exit(0)
 

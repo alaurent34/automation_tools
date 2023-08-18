@@ -19,7 +19,9 @@ import unicodedata
 from unidecode import unidecode
 
 # APP CONFIG
-APP_URL = 'http://173.176.178.92:65060/api/fetchProjectData'
+APP_URL = 'https://curbsn.app/'
+API_FETCH = 'api/fetchProjectData'
+API_CONNECT = 'api/login'
 
 
 def parse_args() -> argparse.Namespace:
@@ -41,6 +43,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("projects_list", metavar='Project list', type=str,
                         nargs='*', default=[],
                         help="List of project names to querry.")
+    parser.add_argument('-u', '--user', type=str, default=None,
+                        help='User name')
+    parser.add_argument('-p', '--pwd', type=str, default=None,
+                        help='Password')
     # Read arguments from command line
     args = parser.parse_args()
 
@@ -69,15 +75,28 @@ def slugify(value, allow_unicode=False):
     return re.sub(r'[-\s]+', '-', value).strip('-_')
 
 
+def connect(url, user, password) -> requests.Session:
+
+    login_data = {'username': user, 'password': password}
+
+    session = requests.Session()
+    session.post(url, data=login_data, timeout=600)
+
+    return session
+
 def get_restrictions(project_name: str,
-                     url: str) -> dict:
+                     url: str, active_session: str = None) -> dict:
     """
     doc
     """
 
-    data = {'projectName': project_name}
+    data = {'projectId': project_name}
 
-    restriction = requests.post(url, json=data)
+    if active_session:
+        restriction = active_session.post(url, json=data, timeout=600)
+        print(restriction.text)
+    else:
+        restriction = requests.post(url, json=data, timeout=600)
 
     try:
         restriction = json.loads(restriction.text)
@@ -89,7 +108,7 @@ def get_restrictions(project_name: str,
     return restriction
 
 
-def save_capacity(project_name: str, capacity_array: dict):
+def save_restrictions(project_name: str, capacity_array: dict):
     """TODO: Docstring for save_capacity.
 
     Parameters
@@ -113,10 +132,15 @@ def main():
 
     projects_list = config.projects_list
 
-    capacities = map(get_restrictions, projects_list,
-                     itertools.repeat(APP_URL))
+    user = config.user
+    password = config.pwd
+    session = connect(url=APP_URL+API_CONNECT, user=user, password=password) if user else None
 
-    list(map(save_capacity, projects_list, capacities))
+    capacities = map(get_restrictions, projects_list,
+                     itertools.repeat(APP_URL+API_FETCH),
+                     itertools.repeat(session))
+
+    list(map(save_restrictions, projects_list, capacities))
 
 
 if __name__ == "__main__":

@@ -56,7 +56,7 @@ def parse_args() -> argparse.Namespace:
         args.projects_list.extend(sys.stdin.read().splitlines())
 
     if not args.output_name:
-        args.output_name = slugify("-".join(projects))
+        args.output_name = 'default'
 
     return args
 

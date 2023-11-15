@@ -143,7 +143,7 @@ def main():
 
     # save
     if config.output:
-        project_list=config.output
+        projects_list=config.output
 
     list(map(save_restrictions, projects_list, capacities))
 

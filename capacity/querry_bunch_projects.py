@@ -47,6 +47,8 @@ def parse_args() -> argparse.Namespace:
                         help='User name')
     parser.add_argument('-p', '--pwd', type=str, default=None,
                         help='Password')
+    parser.add_argument('-o', '--output', type=str, nargs='*', default=[],
+                        help='Output name')
     # Read arguments from command line
     args = parser.parse_args()
 
@@ -94,7 +96,6 @@ def get_restrictions(project_name: str,
 
     if active_session:
         restriction = active_session.post(url, json=data, timeout=600)
-        print(restriction.text)
     else:
         restriction = requests.post(url, json=data, timeout=600)
 
@@ -139,6 +140,10 @@ def main():
     capacities = map(get_restrictions, projects_list,
                      itertools.repeat(APP_URL+API_FETCH),
                      itertools.repeat(session))
+
+    # save
+    if config.output:
+        project_list=config.output
 
     list(map(save_restrictions, projects_list, capacities))
 

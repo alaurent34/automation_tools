@@ -32,6 +32,8 @@ GEOBASE_IDX_COL = 'COTE_RUE_ID'
 
 # APP CONFIG
 APP_URL = ""
+API_CREATE = ""
+API_CONNECT = ""
 
 # DEFAULT ZONE NAME
 SECTOR_NAME = 'NomSecteur'
@@ -63,6 +65,10 @@ def parse_args() -> argparse.Namespace:
                         "of the studied zone.")
     parser.add_argument('-v', '--verbose', action='count', default=0,
                         dest='verbose_count')
+    parser.add_argument('-u', '--user', type=str, default=None,
+                        help='User name for Curbsnapp')
+    parser.add_argument('-p', '--pwd', type=str, default=None,
+                        help='Password for Curbsnapp')
     parser.add_argument("--desc", default="", dest='project_desc',
                         help="Description for the project")
     parser.add_argument("--zone-id", default=SECTOR_NAME, dest='zone_id',
@@ -133,6 +139,16 @@ def assure_same_crs(gdf1: gpd.GeoDataFrame,
     return gdf2
 
 
+def connect(url, user, password) -> requests.Session:
+
+    login_data = {'username': user, 'password': password}
+
+    session = requests.Session()
+    session.post(url, data=login_data, timeout=600)
+
+    return session
+
+
 def clean_columns_names(df: pd.DataFrame, suffix: str) -> pd.DataFrame:
     """
     Add suffix to all columns names.
@@ -177,7 +193,7 @@ def clean_doublons(frame: pd.DataFrame,
 
 
 def upload(app_url: str, project_name: str, road_list: List[int],
-           description: str = None) -> None:
+           description: str = None, active_session: str = None) -> None:
     """
     Upload a capacity project onto the server.
 
@@ -198,7 +214,10 @@ def upload(app_url: str, project_name: str, road_list: List[int],
             'geobaseIds': road_list,
     }
 
-    response = requests.post(app_url, json=payload)
+    if active_session:
+        response = active_session.post(app_url, json=payload, timeout=600)
+    else:
+        response = requests.post(app_url, json=payload, timeout=600)
 
     if response.status_code == 200:
         log.info(project_name + ': Upload successfull')
@@ -290,11 +309,16 @@ def main():
             print('---------' + sector + '---------')
             print(road_list)
         else:
+            user = config.user
+            password = config.pwd
+            session = connect(url=APP_URL+API_CONNECT, user=user, password=password) if user else None
+
             upload(
-                app_url=APP_URL,
+                app_url=APP_URL+API_CREATE,
                 project_name=config.project_name + " - " + str(sector),
                 road_list=road_list,
-                description=config.project_desc
+                description=config.project_desc,
+                active_session=session,
             )
 
     sys.exit(0)

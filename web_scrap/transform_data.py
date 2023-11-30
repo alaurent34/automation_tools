@@ -220,9 +220,6 @@ def main():
     roads = roads.to_crs('epsg:32188')
     delim = delim.to_crs('epsg:32188')
 
-    # cut roads that are outside delim
-    roads = gpd.sjoin(roads, delim, how='inner', predicate='within')
-
     # get the medial axis
     print('Medial axis computation')
     df.geometry = df.geometry.apply(approximate_medial_axis)
@@ -237,7 +234,8 @@ def main():
             df,
             roads[['ID_TRC', 'geometry']],
             how='left',
-            exclusive=True
+            exclusive=True,
+            max_distance=10,
     )
     # if two or more roads are at equal distance of a segment,
     # only keep the first one.
@@ -250,6 +248,14 @@ def main():
     # compute linear referencing
     print('Linear referencing computation')
     df = compute_linear_ref_on_roads(df, roads, join_on='ID_TRC')
+
+    # cut roads that are outside delim
+    df = gpd.sjoin(
+            left_df=df.drop(columns=['index_right', 'index_left'], errors='ignore'),
+            right_df=delim,
+            how='inner',
+            predicate='within'
+    )
 
     # make it into regulation
     print('Final touch')

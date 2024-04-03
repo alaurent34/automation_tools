@@ -73,7 +73,7 @@ def parse_args() -> argparse.Namespace:
                         help="Description for the project")
     parser.add_argument("--zone-id", default=SECTOR_NAME, dest='zone_id',
                         help="Id used in the GeoJSON file to address" +
-                             "the zone, default: "+GEOBASE_IDX_COL)
+                             "the zone, default: "+SECTOR_NAME)
     parser.add_argument("--gdbl-path", default=GEOBASE_PATH,
                         dest='geobase_path',
                         help="Path to custom geobase.")
@@ -221,9 +221,12 @@ def upload(app_url: str, project_name: str, road_list: List[int],
 
     if response.status_code == 200:
         log.info(project_name + ': Upload successfull')
-    else:
-        print('There has been an error. Status : ', response.status_code)
-        log.info(response.text)
+        log.info(project_name + ' ID : '+ xx.json()['projectId'])
+        return xx.json()['projectId']
+
+    print('There has been an error. Status : ', response.status_code)
+    log.info(response.text)
+    return -1
 
 
 def gen_outputs(path: str, names: str, frame: pd.DataFrame,
@@ -302,6 +305,7 @@ def main():
             )
         sys.exit(0)
 
+    projects_id = []
     for sector, sector_roads in roads_cut.groupby(config.zone_id.lower()):
         road_list = [int(i) for i in sector_roads[config.geobase_id.lower()].tolist()]
 
@@ -313,13 +317,17 @@ def main():
             password = config.pwd
             session = connect(url=APP_URL+API_CONNECT, user=user, password=password) if user else None
 
-            upload(
-                app_url=APP_URL+API_CREATE,
-                project_name=config.project_name + " - " + str(sector),
-                road_list=road_list,
-                description=config.project_desc,
-                active_session=session,
+            projects_id.append(
+                upload(
+                    app_url=APP_URL+API_CREATE,
+                    project_name=config.project_name + " - " + str(sector),
+                    road_list=road_list,
+                    description=config.project_desc,
+                    active_session=session,
+                )
             )
+
+    #TODO: Do something with the projects ids
 
     sys.exit(0)
 

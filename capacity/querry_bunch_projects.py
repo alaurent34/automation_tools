@@ -47,6 +47,7 @@ def parse_args() -> argparse.Namespace:
                         help='User name')
     parser.add_argument('-p', '--pwd', type=str, default=None,
                         help='Password')
+    parser.add_argument('-k', '--api-key', type=str, default=None, help='API key')
     parser.add_argument('-o', '--output', type=str, nargs='*', default=[],
                         help='Output name')
     # Read arguments from command line
@@ -87,12 +88,16 @@ def connect(url, user, password) -> requests.Session:
     return session
 
 def get_restrictions(project_name: str,
-                     url: str, active_session: str = None) -> dict:
+                     url: str, active_session: str = None,
+                     key: str = None) -> dict:
     """
     doc
     """
 
     data = {'projectId': project_name}
+
+    if key:
+        data['apiKey'] = key
 
     if active_session:
         restriction = active_session.post(url, json=data, timeout=600)
@@ -135,11 +140,23 @@ def main():
 
     user = config.user
     password = config.pwd
-    session = connect(url=APP_URL+API_CONNECT, user=user, password=password) if user else None
+    key = config.api_key
 
-    capacities = map(get_restrictions, projects_list,
-                     itertools.repeat(APP_URL+API_FETCH),
-                     itertools.repeat(session))
+    if user and password:
+        session = connect(url=APP_URL+API_CONNECT, user=user, password=password) if user else None
+
+        capacities = map(get_restrictions, projects_list,
+                         itertools.repeat(APP_URL+API_FETCH),
+                         itertools.repeat(session))
+    elif key:
+        capacities = map(get_restrictions, projects_list,
+                         itertools.repeat(APP_URL+API_FETCH),
+                         itertools.repeat(None),
+                         itertools.repeat(key))
+
+    else:
+        print('No identification given. Quitting.')
+        sys.exit(2)
 
     # save
     if config.output:

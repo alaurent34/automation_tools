@@ -49,7 +49,9 @@ def parse_args() -> argparse.Namespace:
                         help='Password')
     parser.add_argument('-k', '--api-key', type=str, default=None, help='API key')
     parser.add_argument('-o', '--output', type=str, nargs='*', default=[],
-                        help='Output name')
+                        help='Output name.')
+    parser.add_argument("--merge", action="store_true", dest='merge',
+                        default=False, help="Merge all capacities together.")
     # Read arguments from command line
     args = parser.parse_args()
 
@@ -113,6 +115,15 @@ def get_restrictions(project_name: str,
 
     return restriction
 
+def merge_capacities(capacities_list: list) -> dict:
+    """TODO: Docstring for merge_capacities.
+
+    :capacities_list: List of capacity objects
+    :returns: TODO
+
+    """
+    return itertools.chain(*capacities_list)
+
 
 def save_restrictions(project_name: str, capacity_array: dict):
     """TODO: Docstring for save_capacity.
@@ -161,6 +172,10 @@ def main():
     # save
     if config.output:
         projects_list=config.output
+
+    if config.merge:
+        capacities = merge_capacities(list(capacities))
+        capacities = [list(capacities)]
 
     list(map(save_restrictions, projects_list, capacities))
 

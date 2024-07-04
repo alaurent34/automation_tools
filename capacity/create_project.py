@@ -17,6 +17,7 @@ Usage :
 import os
 import argparse
 import datetime
+import logging as log
 import requests
 import sys
 from typing import List
@@ -101,7 +102,10 @@ def set_verbose_level(level: int) -> None:
     level: int
         level of verbose
     """
-    if level > 0:
+    if level > 1:
+        log.basicConfig(format="%(levelname)s: %(message)s", level=log.DEBUG)
+        log.info("Debug output.")
+    elif level > 0:
         log.basicConfig(format="%(levelname)s: %(message)s", level=log.INFO)
         log.info("Verbose output.")
     else:
@@ -365,6 +369,7 @@ def main():
             )
 
     #TODO: Do something with the projects ids
+    log.info(projects_id)
 
     sys.exit(0)
 

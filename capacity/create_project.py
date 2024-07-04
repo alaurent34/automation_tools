@@ -69,6 +69,7 @@ def parse_args() -> argparse.Namespace:
                         help='User name for Curbsnapp')
     parser.add_argument('-p', '--pwd', type=str, default=None,
                         help='Password for Curbsnapp')
+    parser.add_argument('-k', '--api-key', type=str, default=None, help='API key')
     parser.add_argument("--desc", default="", dest='project_desc',
                         help="Description for the project")
     parser.add_argument("--zone-id", default=SECTOR_NAME, dest='zone_id',
@@ -193,7 +194,8 @@ def clean_doublons(frame: pd.DataFrame,
 
 
 def upload(app_url: str, project_name: str, road_list: List[int],
-           description: str = None, active_session: str = None) -> None:
+           description: str = None, active_session: str = None,
+           key: str = None) -> None:
     """
     Upload a capacity project onto the server.
 
@@ -214,15 +216,22 @@ def upload(app_url: str, project_name: str, road_list: List[int],
             'geobaseIds': road_list,
     }
 
+    if key:
+        payload['apiKey'] = key
+
     if active_session:
+        log.debug('An active session is used')
         response = active_session.post(app_url, json=payload, timeout=600)
     else:
-        response = requests.post(app_url, json=payload, timeout=600)
+        log.debug('Api key is used')
+        log.debug('Payload : %s', payload)
+        log.debug('App URL : %s', app_url)
+        response = requests.post(app_url, json=payload, timeout=1000)
 
     if response.status_code == 200:
         log.info(project_name + ': Upload successfull')
-        log.info(project_name + ' ID : '+ xx.json()['projectId'])
-        return xx.json()['projectId']
+        log.info(project_name + ' ID : '+ response.json()['projectId'])
+        return response.json()['projectId']
 
     print('There has been an error. Status : ', response.status_code)
     log.info(response.text)
@@ -289,6 +298,11 @@ def main():
     roads_cut = clean_doublons(roads_cut,
                                index_by=config.geobase_id.lower())
 
+    user = config.user
+    password = config.pwd
+    session = connect(url=APP_URL+API_CONNECT, user=user, password=password) if user else None
+    key = config.api_key
+
     # Each sub-secteur have one capacity project unless specified
     # otherwise by user imput.
     if config.merge_sect:
@@ -301,7 +315,9 @@ def main():
                 app_url=APP_URL,
                 project_name=config.project_name,
                 road_list=road_list,
-                description=config.project_desc
+                description=config.project_desc,
+                active_session=session,
+                key=key
             )
         sys.exit(0)
 
@@ -313,9 +329,6 @@ def main():
             print('---------' + sector + '---------')
             print(road_list)
         else:
-            user = config.user
-            password = config.pwd
-            session = connect(url=APP_URL+API_CONNECT, user=user, password=password) if user else None
 
             projects_id.append(
                 upload(
@@ -324,6 +337,7 @@ def main():
                     road_list=road_list,
                     description=config.project_desc,
                     active_session=session,
+                    key=key,
                 )
             )
 

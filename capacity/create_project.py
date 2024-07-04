@@ -20,14 +20,14 @@ import datetime
 import requests
 import sys
 from typing import List
-import logging as log
+import urllib.request
+
 import pandas as pd
 os.environ['USE_PYGEOS'] = '0'
 import geopandas as gpd
 
 # ASSET CONFIG
-GEOBASE_PATH = os.path.join(os.path.dirname(__file__),
-                            'assets/geodouble_2950.geojson')
+GEOBASE_PATH = 'https://donnees.montreal.ca/dataset/88493b16-220f-4709-b57b-1ea57c5ba405/resource/16f7fa0a-9ce6-4b29-a7fc-00842c593927/download/gbdouble.json'
 GEOBASE_IDX_COL = 'COTE_RUE_ID'
 
 # APP CONFIG
@@ -107,6 +107,29 @@ def set_verbose_level(level: int) -> None:
     else:
         log.basicConfig(format="%(levelname)s: %(message)s")
 
+def read_mtl_open_data(url: str, encoding : str = 'utf-8') -> gpd.GeoDataFrame:
+    """_summary_
+
+    Parameters
+    ----------
+    url : _type_
+        _description_
+    encoding : str, optional
+        _description_, by default 'utf-8'
+
+    Returns
+    -------
+    _type_
+        _description_
+    """
+    req = urllib.request.urlopen(url)
+    lines = req.readlines()
+    if not encoding:
+        encoding = req.headers.get_content_charset()
+    lines = [line.decode(encoding) for line in lines]
+    data = gpd.read_file(''.join(lines))
+
+    return data
 
 def assure_same_crs(gdf1: gpd.GeoDataFrame,
                     gdf2: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
@@ -286,7 +309,7 @@ def main():
 
     # read files
     zone = gpd.read_file(config.zone)
-    geobase = gpd.read_file(config.geobase_path)
+    geobase = read_mtl_open_data(GEOBASE_PATH)
 
     zone = assure_same_crs(geobase, zone)
 
